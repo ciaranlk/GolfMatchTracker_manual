@@ -1,35 +1,62 @@
-.app {
+.container {
   font-family: sans-serif;
-  padding: 20px;
+  max-width: 960px;
+  margin: auto;
+  padding: 2rem;
 }
 
-.inputs {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-  margin-bottom: 20px;
+h1 {
+  text-align: center;
 }
 
-input {
-  width: 100%;
-  padding: 4px;
-  font-size: 1rem;
+.top-controls {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.teams, .handicaps {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.teams input {
+  flex: 1;
+  padding: 0.5rem;
+  font-weight: bold;
 }
 
 table {
   width: 100%;
   border-collapse: collapse;
-  margin-top: 20px;
+  margin-bottom: 1rem;
 }
 
 th, td {
-  border: 1px solid #ccc;
+  border: 1px solid #ddd;
+  padding: 0.5rem;
   text-align: center;
-  padding: 6px;
 }
 
-button {
-  padding: 4px 10px;
-  font-size: 1rem;
-  cursor: pointer;
+input {
+  width: 100%;
+  padding: 0.4rem;
+  box-sizing: border-box;
+}
+
+.red {
+  background-color: #ffdddd;
+  font-weight: bold;
+}
+
+.blue {
+  background-color: #ddeeff;
+  font-weight: bold;
+}
+
+.result {
+  text-align: center;
+  font-size: 1.2rem;
+  margin-top: 1rem;
 }
