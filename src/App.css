@@ -1,56 +1,57 @@
-.App {
-  font-family: sans-serif;
+body {
+  font-family: Arial, sans-serif;
   padding: 2rem;
-  max-width: 800px;
-  margin: auto;
+  background: #fff;
+  color: #000;
 }
 
-.teams input {
-  margin: 0 10px;
-  font-size: 1rem;
-  padding: 0.2rem 0.4rem;
+h1 {
+  font-size: 1.8rem;
 }
 
-.handicaps label {
-  margin-right: 20px;
+input {
+  width: 60px;
+  padding: 4px;
+  margin: 2px;
 }
 
-.scorecard {
-  margin-top: 2rem;
-  border-top: 1px solid #ccc;
+.App table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
 }
 
-.hole {
-  padding: 1rem 0;
-  border-bottom: 1px solid #eee;
-}
-
-.scores {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-top: 0.5rem;
-}
-
-button {
-  padding: 0.2rem 0.5rem;
-  font-size: 1rem;
+.App th, .App td {
+  border: 1px solid #ccc;
+  padding: 5px;
+  text-align: center;
 }
 
 .red {
-  color: red;
+  background-color: red;
+  color: white;
   font-weight: bold;
 }
 
 .blue {
-  color: blue;
+  background-color: blue;
+  color: white;
   font-weight: bold;
 }
 
-.winner.red {
-  color: red;
+.tabs button {
+  margin-right: 8px;
+  padding: 5px 10px;
+  border-radius: 5px;
 }
 
-.winner.blue {
-  color: blue;
+.teams input {
+  margin: 0 10px;
+  padding: 4px;
+}
+
+.handicaps label {
+  display: inline-block;
+  margin-right: 15px;
+  font-size: 0.9rem;
 }
