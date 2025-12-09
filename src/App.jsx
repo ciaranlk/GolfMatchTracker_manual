@@ -1,13 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
 
-// Helper to calculate playing handicap (simple version: index × slope/113 rounded)
 function calcCourseHandicap(index, slope, rating, par = 72) {
   return Math.round(index * (slope / 113) + (rating - par));
 }
 
 function exportToCSV(games) {
-  // Flatten games into CSV rows, one row per hole per game
   let csv = `"Game","TeamA","TeamB","Hole","Par","SI","ScoreA","ScoreB","Winner"\n`;
   games.forEach((g, gi) => {
     g.holes.forEach(h => {
@@ -45,12 +43,10 @@ function App() {
     const saved = localStorage.getItem('golfGames');
     return saved ? JSON.parse(saved) : [];
   });
-
   const [currentGameIndex, setCurrentGameIndex] = useState(
     games.length > 0 ? 0 : -1
   );
 
-  // Initialize a new game object
   const createNewGame = () => {
     const newGame = {
       name: `Game ${games.length + 1}`,
@@ -74,7 +70,6 @@ function App() {
     setCurrentGameIndex(newGames.length - 1);
   };
 
-  // Save to localStorage on changes
   useEffect(() => {
     localStorage.setItem('golfGames', JSON.stringify(games));
   }, [games]);
@@ -98,22 +93,25 @@ function App() {
   };
 
   const updateHoleField = (holeIdx, field, value) => {
-    const updatedHoles = game.holes.map((h, i) =>
-      i === holeIdx ? { ...h, [field]: value } : h
-    );
+    const updatedHoles = game.holes.map((h, i) => {
+      if (i !== holeIdx) return h;
+      const updatedHole = { ...h, [field]: value };
+      return {
+        ...updatedHole,
+        winner: computeHoleWinner(updatedHole)
+      };
+    });
     const updatedGame = { ...game, holes: updatedHoles };
     const newGames = [...games];
     newGames[currentGameIndex] = updatedGame;
     setGames(newGames);
   };
 
-  // Compute course handicaps
   const courseHcpA = calcCourseHandicap(game.hcpA, game.slope, game.courseRating);
   const courseHcpB = calcCourseHandicap(game.hcpB, game.slope, game.courseRating);
   const shotsDiff = Math.abs(courseHcpA - courseHcpB);
   const shotsTo = courseHcpA > courseHcpB ? 'B' : 'A';
 
-  // Determine which holes get strokes
   const shotHoles = game.holes
     .slice()
     .sort((a, b) => a.si - b.si)
@@ -144,18 +142,6 @@ function App() {
     return diff > 0 ? `${game.teamA} ${diff} Up` : `${game.teamB} ${-diff} Up`;
   };
 
-  const handleWinnerUpdate = (hIdx) => {
-    const updatedHoles = game.holes.map((h, i) => {
-      if (i !== hIdx) return h;
-      const winner = computeHoleWinner(h);
-      return { ...h, winner };
-    });
-    const updatedGame = { ...game, holes: updatedHoles };
-    const newGames = [...games];
-    newGames[currentGameIndex] = updatedGame;
-    setGames(newGames);
-  };
-
   return (
     <div className="App">
       <h1>Golf Matchplay Tracker</h1>
@@ -166,65 +152,22 @@ function App() {
           <button
             key={i}
             onClick={() => setCurrentGameIndex(i)}
-            style={{
-              fontWeight: i === currentGameIndex ? 'bold' : 'normal',
-              marginLeft: '5px'
-            }}
+            style={{ fontWeight: i === currentGameIndex ? 'bold' : 'normal', marginLeft: '5px' }}
           >
-            {g.name} — {g.teamA} vs {g.teamB} ({ matchStatus() })
+            {g.name} — {g.teamA} vs {g.teamB} ({matchStatus()})
           </button>
         ))}
-        <button style={{ marginLeft: '20px' }} onClick={() => exportToJSON(games)}>
-          📄 Export JSON
-        </button>
-        <button onClick={() => exportToCSV(games)}>
-          📊 Export CSV
-        </button>
+        <button style={{ marginLeft: '20px' }} onClick={() => exportToJSON(games)}>📄 Export JSON</button>
+        <button onClick={() => exportToCSV(games)}>📊 Export CSV</button>
       </div>
 
       <div className="inputs">
-        <div>
-          <label>Team A: </label>
-          <input value={game.teamA} onChange={e => updateGameField('teamA', e.target.value)} />
-        </div>
-        <div>
-          <label>Team B: </label>
-          <input value={game.teamB} onChange={e => updateGameField('teamB', e.target.value)} />
-        </div>
-        <div>
-          <label>Handicap Index A: </label>
-          <input
-            type="number"
-            value={game.hcpA}
-            onChange={e => updateGameField('hcpA', +e.target.value)}
-          />
-          <span> → CH: {courseHcpA}</span>
-        </div>
-        <div>
-          <label>Handicap Index B: </label>
-          <input
-            type="number"
-            value={game.hcpB}
-            onChange={e => updateGameField('hcpB', +e.target.value)}
-          />
-          <span> → CH: {courseHcpB}</span>
-        </div>
-        <div>
-          <label>Course Rating: </label>
-          <input
-            type="number"
-            value={game.courseRating}
-            onChange={e => updateGameField('courseRating', +e.target.value)}
-          />
-        </div>
-        <div>
-          <label>Slope: </label>
-          <input
-            type="number"
-            value={game.slope}
-            onChange={e => updateGameField('slope', +e.target.value)}
-          />
-        </div>
+        <div><label>Team A: </label><input value={game.teamA} onChange={e => updateGameField('teamA', e.target.value)} /></div>
+        <div><label>Team B: </label><input value={game.teamB} onChange={e => updateGameField('teamB', e.target.value)} /></div>
+        <div><label>Handicap Index A: </label><input type="number" value={game.hcpA} onChange={e => updateGameField('hcpA', +e.target.value)} /><span> → CH: {courseHcpA}</span></div>
+        <div><label>Handicap Index B: </label><input type="number" value={game.hcpB} onChange={e => updateGameField('hcpB', +e.target.value)} /><span> → CH: {courseHcpB}</span></div>
+        <div><label>Course Rating: </label><input type="number" value={game.courseRating} onChange={e => updateGameField('courseRating', +e.target.value)} /></div>
+        <div><label>Slope: </label><input type="number" value={game.slope} onChange={e => updateGameField('slope', +e.target.value)} /></div>
       </div>
 
       <h3>Shots Given: {shotsDiff} to Team {shotsTo}</h3>
@@ -233,65 +176,18 @@ function App() {
       <table>
         <thead>
           <tr>
-            <th>Hole</th>
-            <th>Par</th>
-            <th>SI</th>
-            <th>{game.teamA} Gross</th>
-            <th>{game.teamB} Gross</th>
-            <th>Result</th>
+            <th>Hole</th><th>Par</th><th>SI</th><th>{game.teamA} Gross</th><th>{game.teamB} Gross</th><th>Result</th>
           </tr>
         </thead>
         <tbody>
           {game.holes.map((h, idx) => (
             <tr key={h.hole}>
               <td>{h.hole}</td>
-              <td>
-                <input
-                  type="number"
-                  value={h.par}
-                  onChange={e => updateHoleField(idx, 'par', +e.target.value)}
-                />
-              </td>
-              <td>
-                <input
-                  type="number"
-                  value={h.si}
-                  onChange={e => updateHoleField(idx, 'si', +e.target.value)}
-                />
-              </td>
-              <td>
-                <input
-                  type="number"
-                  value={h.scoreA}
-                  onChange={e => updateHoleField(idx, 'scoreA', e.target.value)}
-                />
-              </td>
-              <td>
-                <input
-                  type="number"
-                  value={h.scoreB}
-                  onChange={e => updateHoleField(idx, 'scoreB', e.target.value)}
-                />
-              </td>
-              <td
-                style={{
-                  backgroundColor:
-                    h.winner === game.teamA
-                      ? 'red'
-                      : h.winner === game.teamB
-                      ? 'blue'
-                      : 'transparent',
-                  color:
-                    h.winner === game.teamA || h.winner === game.teamB
-                      ? 'white'
-                      : 'black'
-                }}
-              >
-                {h.winner}
-              </td>
-              <td>
-                <button onClick={() => handleWinnerUpdate(idx)}>Update</button>
-              </td>
+              <td><input type="number" value={h.par} onChange={e => updateHoleField(idx, 'par', +e.target.value)} /></td>
+              <td><input type="number" value={h.si} onChange={e => updateHoleField(idx, 'si', +e.target.value)} /></td>
+              <td><input type="number" value={h.scoreA} onChange={e => updateHoleField(idx, 'scoreA', e.target.value)} /></td>
+              <td><input type="number" value={h.scoreB} onChange={e => updateHoleField(idx, 'scoreB', e.target.value)} /></td>
+              <td style={{ backgroundColor: h.winner === game.teamA ? 'red' : h.winner === game.teamB ? 'blue' : 'transparent', color: h.winner === game.teamA || h.winner === game.teamB ? 'white' : 'black' }}>{h.winner}</td>
             </tr>
           ))}
         </tbody>
