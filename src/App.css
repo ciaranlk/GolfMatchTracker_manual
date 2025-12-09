@@ -1,62 +1,56 @@
-.container {
+.App {
   font-family: sans-serif;
-  max-width: 960px;
-  margin: auto;
   padding: 2rem;
-}
-
-h1 {
-  text-align: center;
-}
-
-.top-controls {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 1rem;
-}
-
-.teams, .handicaps {
-  display: flex;
-  gap: 1rem;
-  margin-bottom: 1rem;
+  max-width: 800px;
+  margin: auto;
 }
 
 .teams input {
-  flex: 1;
-  padding: 0.5rem;
-  font-weight: bold;
+  margin: 0 10px;
+  font-size: 1rem;
+  padding: 0.2rem 0.4rem;
 }
 
-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-bottom: 1rem;
+.handicaps label {
+  margin-right: 20px;
 }
 
-th, td {
-  border: 1px solid #ddd;
-  padding: 0.5rem;
-  text-align: center;
+.scorecard {
+  margin-top: 2rem;
+  border-top: 1px solid #ccc;
 }
 
-input {
-  width: 100%;
-  padding: 0.4rem;
-  box-sizing: border-box;
+.hole {
+  padding: 1rem 0;
+  border-bottom: 1px solid #eee;
+}
+
+.scores {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+button {
+  padding: 0.2rem 0.5rem;
+  font-size: 1rem;
 }
 
 .red {
-  background-color: #ffdddd;
+  color: red;
   font-weight: bold;
 }
 
 .blue {
-  background-color: #ddeeff;
+  color: blue;
   font-weight: bold;
 }
 
-.result {
-  text-align: center;
-  font-size: 1.2rem;
-  margin-top: 1rem;
+.winner.red {
+  color: red;
+}
+
+.winner.blue {
+  color: blue;
 }
