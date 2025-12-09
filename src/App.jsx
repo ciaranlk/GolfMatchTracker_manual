@@ -10,175 +10,164 @@ function App() {
     const saved = localStorage.getItem('games');
     return saved ? JSON.parse(saved) : [];
   });
-  const [activeGameIndex, setActiveGameIndex] = useState(0);
-  const [inputs, setInputs] = useState({
-    redName: 'Red',
-    blueName: 'Blue',
-    redIndex: 10,
-    blueIndex: 8,
-    rating: 72,
-    slope: 113
-  });
+  const [activeGame, setActiveGame] = useState(0);
+  const [teamA, setTeamA] = useState('Red');
+  const [teamB, setTeamB] = useState('Blue');
+  const [indexA, setIndexA] = useState(10);
+  const [indexB, setIndexB] = useState(8);
+  const [courseRating, setCourseRating] = useState(72);
+  const [slope, setSlope] = useState(113);
+
+  const addGame = () => {
+    const chA = calculateCourseHandicap(indexA, slope, courseRating);
+    const chB = calculateCourseHandicap(indexB, slope, courseRating);
+    const shots = Math.abs(chA - chB);
+    const shotsTo = chA > chB ? 'A' : 'B';
+
+    const holes = Array.from({ length: 18 }, (_, i) => ({
+      hole: i + 1,
+      par: 4,
+      si: i + 1,
+      scoreA: 0,
+      scoreB: 0,
+    }));
+
+    const newGame = {
+      teamA,
+      teamB,
+      indexA,
+      indexB,
+      courseRating,
+      slope,
+      chA,
+      chB,
+      shots,
+      shotsTo,
+      holes,
+    };
+    setGames([...games, newGame]);
+    setActiveGame(games.length);
+  };
 
   useEffect(() => {
     localStorage.setItem('games', JSON.stringify(games));
   }, [games]);
 
-  const startGame = () => {
-    const chRed = calculateCourseHandicap(inputs.redIndex, inputs.slope, inputs.rating);
-    const chBlue = calculateCourseHandicap(inputs.blueIndex, inputs.slope, inputs.rating);
-    const shotsGiven = Math.abs(chRed - chBlue);
-    const shotsTo = chRed > chBlue ? 'Blue' : 'Red';
-    const newGame = {
-      redName: inputs.redName,
-      blueName: inputs.blueName,
-      redIndex: inputs.redIndex,
-      blueIndex: inputs.blueIndex,
-      rating: inputs.rating,
-      slope: inputs.slope,
-      chRed,
-      chBlue,
-      shotsGiven,
-      shotsTo,
-      holes: Array.from({ length: 18 }, (_, i) => ({ hole: i + 1, par: 4, si: i + 1, red: 0, blue: 0 })),
-    };
-    setGames([...games, newGame]);
-    setActiveGameIndex(games.length);
-  };
-
-  const updateHole = (index, team, delta) => {
+  const handleScoreChange = (holeIdx, team, delta) => {
     const updatedGames = [...games];
-    updatedGames[activeGameIndex].holes[index][team] += delta;
-    if (updatedGames[activeGameIndex].holes[index][team] < 0) {
-      updatedGames[activeGameIndex].holes[index][team] = 0;
+    const currentGame = updatedGames[activeGame];
+    const hole = currentGame.holes[holeIdx];
+    if (team === 'A') {
+      hole.scoreA = Math.max(0, hole.scoreA + delta);
+    } else {
+      hole.scoreB = Math.max(0, hole.scoreB + delta);
     }
     setGames(updatedGames);
   };
 
-  const calculateResult = (hole) => {
-    const { red, blue, si } = hole;
-    const game = games[activeGameIndex];
-    const { shotsGiven, shotsTo } = game;
+  const calculateResults = (game) => {
+    let aScore = 0;
+    let bScore = 0;
+    let remaining = 18;
+    const perHoleResults = game.holes.map(hole => {
+      const { scoreA, scoreB, si } = hole;
+      let netA = scoreA;
+      let netB = scoreB;
+      if (game.shotsTo === 'A' && si <= game.shots) netA--;
+      if (game.shotsTo === 'B' && si <= game.shots) netB--;
 
-    let redScore = red;
-    let blueScore = blue;
+      if (scoreA === 0 && scoreB === 0) return '-';
 
-    const strokeHoles = Array.from({ length: shotsGiven }, (_, i) => i + 1);
-    const applyShot = strokeHoles.includes(si);
+      if (netA < netB) aScore++;
+      else if (netB < netA) bScore++;
+      else return 'Half';
 
-    if (applyShot) {
-      if (shotsTo === 'Red') redScore -= 1;
-      else blueScore -= 1;
-    }
-
-    if (redScore < blueScore) return game.redName;
-    if (blueScore < redScore) return game.blueName;
-    return 'Half';
-  };
-
-  const computeMatchStatus = (game) => {
-    let redUp = 0;
-    let blueUp = 0;
-    game.holes.forEach(hole => {
-      const result = calculateResult(hole);
-      if (result === game.redName) redUp++;
-      else if (result === game.blueName) blueUp++;
+      remaining--;
+      if (aScore > bScore + remaining) return `${game.teamA}`;
+      if (bScore > aScore + remaining) return `${game.teamB}`;
+      return aScore > bScore ? `${game.teamA}` : `${game.teamB}`;
     });
 
-    const diff = redUp - blueUp;
-    if (diff > 0) return `${game.redName} ${diff} Up`;
-    if (diff < 0) return `${game.blueName} ${-diff} Up`;
-    return 'All Square';
+    const diff = aScore - bScore;
+    const matchStatus =
+      diff === 0 ? 'All Square'
+        : diff > 0 ? `${game.teamA} ${diff} Up`
+        : `${game.teamB} ${-diff} Up`;
+    return { perHoleResults, matchStatus };
   };
 
+  const { perHoleResults, matchStatus } = games[activeGame]
+    ? calculateResults(games[activeGame])
+    : { perHoleResults: [], matchStatus: '' };
+
   return (
-    <div className="app-container">
-      <h1>Golf Matchplay Tracker</h1>
-      <div className="game-list">
-        {games.map((game, index) => (
+    <div className="App">
+      <h1>Golf Match Tracker</h1>
+
+      <div style={{ marginBottom: '10px' }}>
+        <input value={teamA} onChange={e => setTeamA(e.target.value)} /> vs
+        <input value={teamB} onChange={e => setTeamB(e.target.value)} />
+        <input value={indexA} onChange={e => setIndexA(Number(e.target.value))} />
+        <input value={indexB} onChange={e => setIndexB(Number(e.target.value))} />
+        <input value={courseRating} onChange={e => setCourseRating(Number(e.target.value))} />
+        <input value={slope} onChange={e => setSlope(Number(e.target.value))} />
+        <button onClick={addGame}>Start Game</button>
+      </div>
+
+      <div>
+        {games.map((game, idx) => (
           <button
-            key={index}
-            onClick={() => setActiveGameIndex(index)}
-            className={index === activeGameIndex ? 'active' : ''}
+            key={idx}
+            onClick={() => setActiveGame(idx)}
+            style={{ fontWeight: activeGame === idx ? 'bold' : 'normal' }}
           >
-            {game.redName} vs {game.blueName} ({computeMatchStatus(game)})
+            {`${game.teamA} vs ${game.teamB} (${calculateResults(game).matchStatus})`}
           </button>
         ))}
-        <button onClick={startGame}>+ New Game</button>
       </div>
 
-      <div className="course-form">
-        <input
-          placeholder="Red"
-          value={inputs.redName}
-          onChange={e => setInputs({ ...inputs, redName: e.target.value })}
-        />
-        <input
-          placeholder="Blue"
-          value={inputs.blueName}
-          onChange={e => setInputs({ ...inputs, blueName: e.target.value })}
-        />
-        <input
-          type="number"
-          value={inputs.redIndex}
-          onChange={e => setInputs({ ...inputs, redIndex: +e.target.value })}
-        />
-        <input
-          type="number"
-          value={inputs.blueIndex}
-          onChange={e => setInputs({ ...inputs, blueIndex: +e.target.value })}
-        />
-        <input
-          type="number"
-          value={inputs.rating}
-          onChange={e => setInputs({ ...inputs, rating: +e.target.value })}
-        />
-        <input
-          type="number"
-          value={inputs.slope}
-          onChange={e => setInputs({ ...inputs, slope: +e.target.value })}
-        />
-        <button onClick={startGame}>Start Game</button>
-      </div>
-
-      {games[activeGameIndex] && (
+      {games[activeGame] && (
         <div>
-          <h3>{games[activeGameIndex].redName} vs {games[activeGameIndex].blueName}</h3>
-          <p>{games[activeGameIndex].redName} CH: {games[activeGameIndex].chRed}, {games[activeGameIndex].blueName} CH: {games[activeGameIndex].chBlue}</p>
+          <h2>{games[activeGame].teamA} vs {games[activeGame].teamB}</h2>
+          <p>Red CH: {games[activeGame].chA}, Blue CH: {games[activeGame].chB}</p>
+          <p>{matchStatus}</p>
+
           <table>
             <thead>
               <tr>
-                <th>Hole</th><th>Par</th><th>SI</th>
-                <th>{games[activeGameIndex].redName}</th>
-                <th>{games[activeGameIndex].blueName}</th>
+                <th>Hole</th>
+                <th>Par</th>
+                <th>SI</th>
+                <th>{games[activeGame].teamA}</th>
+                <th>{games[activeGame].teamB}</th>
                 <th>Result</th>
               </tr>
             </thead>
             <tbody>
-              {games[activeGameIndex].holes.map((hole, i) => (
-                <tr key={i}>
+              {games[activeGame].holes.map((hole, idx) => (
+                <tr key={idx}>
                   <td>{hole.hole}</td>
                   <td><input value={hole.par} onChange={e => {
                     const updated = [...games];
-                    updated[activeGameIndex].holes[i].par = +e.target.value;
+                    updated[activeGame].holes[idx].par = Number(e.target.value);
                     setGames(updated);
                   }} /></td>
                   <td><input value={hole.si} onChange={e => {
                     const updated = [...games];
-                    updated[activeGameIndex].holes[i].si = +e.target.value;
+                    updated[activeGame].holes[idx].si = Number(e.target.value);
                     setGames(updated);
                   }} /></td>
                   <td>
-                    <button onClick={() => updateHole(i, 'red', -1)}>-</button>
-                    {hole.red}
-                    <button onClick={() => updateHole(i, 'red', 1)}>+</button>
+                    <button onClick={() => handleScoreChange(idx, 'A', -1)}>-</button>
+                    {hole.scoreA}
+                    <button onClick={() => handleScoreChange(idx, 'A', 1)}>+</button>
                   </td>
                   <td>
-                    <button onClick={() => updateHole(i, 'blue', -1)}>-</button>
-                    {hole.blue}
-                    <button onClick={() => updateHole(i, 'blue', 1)}>+</button>
+                    <button onClick={() => handleScoreChange(idx, 'B', -1)}>-</button>
+                    {hole.scoreB}
+                    <button onClick={() => handleScoreChange(idx, 'B', 1)}>+</button>
                   </td>
-                  <td>{calculateResult(hole)}</td>
+                  <td>{perHoleResults[idx]}</td>
                 </tr>
               ))}
             </tbody>
