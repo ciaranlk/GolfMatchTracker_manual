@@ -1,110 +1,151 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './App.css';
 
-function App() {
-  const initialHoles = Array.from({ length: 18 }, (_, i) => ({
-    hole: i + 1,
-    par: 4,
-    si: i + 1,
-    redGross: '',
-    blueGross: '',
-  }));
+function calculateCourseHandicap(handicapIndex, slope, rating, par = 72) {
+  return Math.round(handicapIndex * (slope / 113) + (rating - par));
+}
 
-  const [teamA, setTeamA] = useState('Team Red');
-  const [teamB, setTeamB] = useState('Team Blue');
-  const [handicapA, setHandicapA] = useState(10);
-  const [handicapB, setHandicapB] = useState(14);
+function getInitialGames() {
+  const saved = localStorage.getItem('golfGames');
+  return saved ? JSON.parse(saved) : [];
+}
+
+function App() {
+  const [games, setGames] = useState(getInitialGames);
+  const [currentGameIndex, setCurrentGameIndex] = useState(0);
+
+  const [teamAName, setTeamAName] = useState('Team Red');
+  const [teamBName, setTeamBName] = useState('Team Blue');
+  const [handicapIndexA, setHandicapIndexA] = useState(10);
+  const [handicapIndexB, setHandicapIndexB] = useState(14);
   const [courseRating, setCourseRating] = useState(72);
   const [slope, setSlope] = useState(120);
-  const [holes, setHoles] = useState(initialHoles);
 
-  const diff = Math.abs(handicapA - handicapB);
-  const shotsGivenTo = handicapA < handicapB ? teamB : teamA;
+  const [holes, setHoles] = useState(
+    Array.from({ length: 18 }, (_, i) => ({
+      hole: i + 1,
+      par: 4,
+      si: i + 1,
+      scoreA: '',
+      scoreB: '',
+    }))
+  );
 
-  const sortedBySI = [...holes].sort((a, b) => a.si - b.si);
-  const holesToApplyShots = sortedBySI.slice(0, diff).map(h => h.hole);
+  const courseHandicapA = calculateCourseHandicap(handicapIndexA, slope, courseRating);
+  const courseHandicapB = calculateCourseHandicap(handicapIndexB, slope, courseRating);
 
-  const getNetScore = (gross, shots) => {
-    const parsed = parseInt(gross);
-    return isNaN(parsed) ? null : parsed - shots;
-  };
+  const shotsGiven = Math.abs(courseHandicapA - courseHandicapB);
+  const shotsTo = courseHandicapA > courseHandicapB ? 'Team B' : 'Team A';
 
-  const getHoleWinner = (hole) => {
-    const redGross = parseInt(hole.redGross);
-    const blueGross = parseInt(hole.blueGross);
-    if (isNaN(redGross) || isNaN(blueGross)) return '';
+  const shotHoles = holes
+    .slice()
+    .sort((a, b) => a.si - b.si)
+    .slice(0, shotsGiven)
+    .map(h => h.hole);
 
-    const redShots = shotsGivenTo === teamA && holesToApplyShots.includes(hole.hole) ? 1 : 0;
-    const blueShots = shotsGivenTo === teamB && holesToApplyShots.includes(hole.hole) ? 1 : 0;
-
-    const redNet = redGross - redShots;
-    const blueNet = blueGross - blueShots;
-
-    if (redNet < blueNet) return teamA;
-    if (blueNet < redNet) return teamB;
-    return 'Tie';
+  const determineWinner = (a, b, holeNumber) => {
+    if (a === '' || b === '') return '';
+    let adjA = parseInt(a);
+    let adjB = parseInt(b);
+    if (courseHandicapA > courseHandicapB && shotHoles.includes(holeNumber)) adjB--;
+    if (courseHandicapB > courseHandicapA && shotHoles.includes(holeNumber)) adjA--;
+    if (adjA < adjB) return teamAName;
+    if (adjB < adjA) return teamBName;
+    return 'Halved';
   };
 
   const getMatchStatus = () => {
-    let redWins = 0;
-    let blueWins = 0;
-    let holesPlayed = 0;
-
-    for (let hole of holes) {
-      const winner = getHoleWinner(hole);
-      if (winner === teamA) redWins++;
-      else if (winner === teamB) blueWins++;
-      holesPlayed++;
-
-      const remaining = 18 - holesPlayed;
-      if (redWins - blueWins > remaining) return `${teamA} ${redWins - blueWins} Up`;
-      if (blueWins - redWins > remaining) return `${teamB} ${blueWins - redWins} Up`;
+    let score = 0;
+    for (const hole of holes) {
+      const winner = determineWinner(hole.scoreA, hole.scoreB, hole.hole);
+      if (winner === teamAName) score++;
+      else if (winner === teamBName) score--;
     }
-
-    if (redWins > blueWins) return `${teamA} ${redWins - blueWins} Up`;
-    if (blueWins > redWins) return `${teamB} ${blueWins - redWins} Up`;
-    return 'AS';
+    if (score === 0) return 'AS';
+    return score > 0 ? `${teamAName} ${score} Up` : `${teamBName} ${Math.abs(score)} Up`;
   };
 
-  const handleHoleChange = (index, field, value) => {
-    const updated = [...holes];
-    updated[index][field] = value;
-    setHoles(updated);
+  useEffect(() => {
+    const updatedGames = [...games];
+    updatedGames[currentGameIndex] = {
+      name: `${teamAName} vs ${teamBName}`,
+      teamAName,
+      teamBName,
+      handicapIndexA,
+      handicapIndexB,
+      courseRating,
+      slope,
+      holes,
+    };
+    setGames(updatedGames);
+    localStorage.setItem('golfGames', JSON.stringify(updatedGames));
+  }, [teamAName, teamBName, handicapIndexA, handicapIndexB, courseRating, slope, holes]);
+
+  const createNewGame = () => {
+    const newGame = {
+      name: `Game ${games.length + 1}`,
+      teamAName: 'Team Red',
+      teamBName: 'Team Blue',
+      handicapIndexA: 10,
+      handicapIndexB: 14,
+      courseRating: 72,
+      slope: 120,
+      holes: Array.from({ length: 18 }, (_, i) => ({ hole: i + 1, par: 4, si: i + 1, scoreA: '', scoreB: '' })),
+    };
+    const newGames = [...games, newGame];
+    setGames(newGames);
+    setCurrentGameIndex(newGames.length - 1);
   };
+
+  useEffect(() => {
+    if (games.length > 0) {
+      const g = games[currentGameIndex];
+      setTeamAName(g.teamAName);
+      setTeamBName(g.teamBName);
+      setHandicapIndexA(g.handicapIndexA);
+      setHandicapIndexB(g.handicapIndexB);
+      setCourseRating(g.courseRating);
+      setSlope(g.slope);
+      setHoles(g.holes);
+    }
+  }, [currentGameIndex]);
 
   return (
     <div className="App">
-      <h2>Golf Matchplay Tracker</h2>
+      <h1>Golf Matchplay Tracker</h1>
 
-      <div style={{ display: 'flex', gap: '1rem' }}>
-        <div>
-          <label>Team A Name</label><br />
-          <input value={teamA} onChange={e => setTeamA(e.target.value)} />
-        </div>
-        <div>
-          <label>Team B Name</label><br />
-          <input value={teamB} onChange={e => setTeamB(e.target.value)} />
-        </div>
-        <div>
-          <label>Handicap Index A</label><br />
-          <input type="number" value={handicapA} onChange={e => setHandicapA(+e.target.value)} />
-        </div>
-        <div>
-          <label>Handicap Index B</label><br />
-          <input type="number" value={handicapB} onChange={e => setHandicapB(+e.target.value)} />
-        </div>
-        <div>
-          <label>Course Rating</label><br />
-          <input type="number" value={courseRating} onChange={e => setCourseRating(+e.target.value)} />
-        </div>
-        <div>
-          <label>Slope</label><br />
-          <input type="number" value={slope} onChange={e => setSlope(+e.target.value)} />
-        </div>
+      <div style={{ marginBottom: '1rem' }}>
+        <button onClick={createNewGame}>+ New Game</button>
+        {games.map((g, i) => (
+          <button
+            key={i}
+            onClick={() => setCurrentGameIndex(i)}
+            style={{ marginLeft: '5px', fontWeight: currentGameIndex === i ? 'bold' : 'normal' }}
+          >
+            {g.name} ({getMatchStatus()})
+          </button>
+        ))}
       </div>
 
-      <h4>Shots Given: {diff} to {shotsGivenTo}</h4>
-      <h4>Match Status: {getMatchStatus()}</h4>
+      <table>
+        <tbody>
+          <tr>
+            <td><input value={teamAName} onChange={e => setTeamAName(e.target.value)} /></td>
+            <td><input value={teamBName} onChange={e => setTeamBName(e.target.value)} /></td>
+            <td>Handicap Index A <input value={handicapIndexA} onChange={e => setHandicapIndexA(+e.target.value)} /></td>
+            <td>Handicap Index B <input value={handicapIndexB} onChange={e => setHandicapIndexB(+e.target.value)} /></td>
+          </tr>
+          <tr>
+            <td>Course Rating <input value={courseRating} onChange={e => setCourseRating(+e.target.value)} /></td>
+            <td>Slope <input value={slope} onChange={e => setSlope(+e.target.value)} /></td>
+            <td>CH A: {courseHandicapA}</td>
+            <td>CH B: {courseHandicapB}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>Shots Given: {shotsGiven} to {shotsTo}</h3>
+      <h3>Match Status: {getMatchStatus()}</h3>
 
       <table>
         <thead>
@@ -112,46 +153,38 @@ function App() {
             <th>Hole</th>
             <th>Par</th>
             <th>SI</th>
-            <th>{teamA} Gross</th>
-            <th>{teamB} Gross</th>
-            <th>Winner</th>
+            <th>{teamAName}</th>
+            <th>{teamBName}</th>
+            <th>Result</th>
           </tr>
         </thead>
         <tbody>
-          {holes.map((hole, index) => {
-            const winner = getHoleWinner(hole);
+          {holes.map((hole, idx) => {
+            const winner = determineWinner(hole.scoreA, hole.scoreB, hole.hole);
             return (
-              <tr key={index}>
+              <tr key={hole.hole}>
                 <td>{hole.hole}</td>
-                <td>
-                  <input
-                    type="number"
-                    value={hole.par}
-                    onChange={e => handleHoleChange(index, 'par', e.target.value)}
-                  />
-                </td>
-                <td>
-                  <input
-                    type="number"
-                    value={hole.si}
-                    onChange={e => handleHoleChange(index, 'si', e.target.value)}
-                  />
-                </td>
-                <td>
-                  <input
-                    type="number"
-                    value={hole.redGross}
-                    onChange={e => handleHoleChange(index, 'redGross', e.target.value)}
-                  />
-                </td>
-                <td>
-                  <input
-                    type="number"
-                    value={hole.blueGross}
-                    onChange={e => handleHoleChange(index, 'blueGross', e.target.value)}
-                  />
-                </td>
-                <td>{winner}</td>
+                <td><input value={hole.par} onChange={e => {
+                  const newHoles = [...holes];
+                  newHoles[idx].par = +e.target.value;
+                  setHoles(newHoles);
+                }} /></td>
+                <td><input value={hole.si} onChange={e => {
+                  const newHoles = [...holes];
+                  newHoles[idx].si = +e.target.value;
+                  setHoles(newHoles);
+                }} /></td>
+                <td><input value={hole.scoreA} onChange={e => {
+                  const newHoles = [...holes];
+                  newHoles[idx].scoreA = e.target.value;
+                  setHoles(newHoles);
+                }} /></td>
+                <td><input value={hole.scoreB} onChange={e => {
+                  const newHoles = [...holes];
+                  newHoles[idx].scoreB = e.target.value;
+                  setHoles(newHoles);
+                }} /></td>
+                <td style={{ backgroundColor: winner === teamAName ? 'red' : winner === teamBName ? 'blue' : '', color: winner ? 'white' : 'black' }}>{winner}</td>
               </tr>
             );
           })}
